@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nearby Bluetooth Chat – Web Prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      --bg-main: #0f172a;
+      --phone-bg: #f9fafb;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border-soft: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --nav-bg: #ffffff;
+      --bubble-out: #2563eb;
+      --bubble-out-text: #eff6ff;
+      --bubble-in: #e5e7eb;
+      --bubble-in-text: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #1e293b, #020617);
+      color: var(--text-main);
+    }
+
+    .app-shell {
+      padding: 24px;
+    }
+
+    .phone-frame {
+      width: 390px;
+      height: 844px;
+      background: var(--phone-bg);
+      border-radius: 40px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Fake status bar */
+    .status-bar {
+      height: 32px;
+      padding: 8px 18px 0;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-bar__pill {
+      width: 120px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.08);
+    }
+
+    .top-bar {
+      padding: 4px 18px 8px;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-left h1 {
+      font-size: 18px;
+      font-weight: 650;
+      color: var(--text-main);
+    }
+
+    .top-left p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #4f46e5, #22c55e);
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 10px;
+      background: var(--accent-soft);
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 12px;
+    }
+
+    .bt-icon {
+      font-size: 16px;
+    }
+
+    .status-text {
+      flex: 1;
+      color: #1d4ed8;
+    }
+
+    .scan-btn {
+      border: none;
+      background: #1d4ed8;
+      color: #eff6ff;
+      font-size: 11px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+
+    .scan-btn:hover {
+      background: #1e40af;
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #f9fafb, #e5e7eb);
+    }
+
+    .screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 8px 12px 8px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Devices screen */
+    .screen-devices-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      padding: 0 4px;
+    }
+
+    .screen-devices-title h2 {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .screen-devices-title span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .device-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      padding: 2px 2px 8px;
+    }
+
+    .device-card {
+      display: flex;
+      gap: 10px;
+      padding: 10px 10px;
+      background: #ffffff;
+      border-radius: 18px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, border-color 0.08s ease;
+    }
+
+    .device-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.09);
+      border-color: #bfdbfe;
+    }
+
+    .device-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #22d3ee, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ecfeff;
+      font-weight: 600;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .device-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .device-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .device-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .device-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tag-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    /* Chat screen */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 2px 4px 8px;
+    }
+
+    .back-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(15, 23, 42, 0.04);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .chat-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .chat-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .chat-status {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 2px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .message-row {
+      display: flex;
+    }
+
+    .message-row.outgoing {
+      justify-content: flex-end;
+    }
+
+    .message-row.incoming {
+      justify-content: flex-start;
+    }
+
+    .bubble {
+      max-width: 70%;
+      padding: 6px 10px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.35;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+      word-wrap: break-word;
+    }
+
+    .outgoing .bubble {
+      background: var(--bubble-out);
+      color: var(--bubble-out-text);
+      border-bottom-right-radius: 4px;
+    }
+
+    .incoming .bubble {
+      background: var(--bubble-in);
+      color: var(--bubble-in-text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      padding: 8px 6px 8px;
+      border-top: 1px solid var(--border-soft);
+      background: rgba(249, 250, 251, 0.98);
+    }
+
+    .input-row input {
+      flex: 1;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .input-row input:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 1px #bfdbfe;
+    }
+
+    .input-row button {
+      border-radius: 999px;
+      border: none;
+      padding: 0 14px;
+      background: var(--accent);
+      color: #eff6ff;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .input-row button:hover {
+      background: #1d4ed8;
+    }
+
+    /* Bottom nav */
+    .bottom-nav {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 6px 8px 10px;
+      background: var(--nav-bg);
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .nav-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 0;
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .nav-btn .icon {
+      font-size: 16px;
+    }
+
+    .nav-btn.active {
+      color: var(--accent);
+    }
+
+    .nav-btn.active .icon {
+      transform: translateY(-1px);
+    }
+
+    /* Scrollbar subtle */
+    .device-list::-webkit-scrollbar,
+    .messages::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .device-list::-webkit-scrollbar-thumb,
+    .messages::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.7);
+      border-radius: 999px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        background: #020617;
+      }
+
+      .app-shell {
+        padding: 0;
+      }
+
+      .phone-frame {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="phone-frame">
+      <div class="status-bar">
+        <span>9:41</span>
+        <div class="status-bar__pill"></div>
+      </div>
+
+      <header class="top-bar">
+        <div class="top-left">
+          <h1>Nearby Bluetooth Chat</h1>
+          <p class="subtitle">Chat with people around you</p>
+        </div>
+        <div class="avatar">R</div>
+      </header>
+
+      <div class="status-row">
+        <span class="bt-icon">🔷</span>
+        <span class="status-text">Bluetooth: <strong>ON</strong> · Scanning for devices…</span>
+        <button class="scan-btn" type="button" id="scan-btn">Scan</button>
+      </div>
+
+      <div class="content">
+        <!-- Devices screen -->
+        <section class="screen screen-devices" data-screen="devices">
+          <div class="screen-devices-title">
+            <h2>Nearby devices</h2>
+            <span id="device-count">3 found</span>
+          </div>
+          <ul class="device-list" id="device-list">
+            <!-- device cards added by JS -->
+          </ul>
+        </section>
+
+        <!-- Chat screen -->
+        <section class="screen screen-chat hidden" data-screen="chat">
+          <div class="chat-header">
+            <button class="back-btn" type="button" id="back-btn">← Nearby</button>
+            <div class="chat-info">
+              <span class="chat-name" id="chat-name">Alex's Phone</span>
+              <span class="chat-status">Connected via Bluetooth</span>
+            </div>
+          </div>
+          <div class="messages" id="messages"></div>
+          <form class="input-row" id="message-form">
+            <input
+              type="text"
+              id="message-input"
+              placeholder="Type a message…"
+              autocomplete="off"
+            />
+            <button type="submit">Send</button>
+          </form>
+        </section>
+      </div>
+
+      <nav class="bottom-nav">
+        <button class="nav-btn active" type="button" data-target="devices">
+          <span class="icon">📶</span>
+          <span class="label">Nearby</span>
+        </button>
+        <button class="nav-btn" type="button" data-target="chat">
+          <span class="icon">💬</span>
+          <span class="label">Chats</span>
+        </button>
+        <a
+          class="nav-btn"
+          href="https://example.com/help-bluetooth-chat"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span class="icon">❓</span>
+          <span class="label">Help</span>
+        </a>
+      </nav>
+    </div>
+  </div>
+
+  <script>
+    const devices = [
+      {
+        name: "Alex's Phone",
+        distance: "2 m away",
+        hint: "Tap to start chat",
+      },
+      {
+        name: "Sara's Tablet",
+        distance: "4 m away",
+        hint: "Available for local chat",
+      },
+      {
+        name: "Group Study iPad",
+        distance: "6 m away",
+        hint: "Public device · Classroom",
+      },
+    ];
+
+    const deviceListEl = document.getElementById("device-list");
+    const deviceCountEl = document.getElementById("device-count");
+    const scanBtn = document.getElementById("scan-btn");
+
+    const screens = document.querySelectorAll(".screen");
+    const navButtons = document.querySelectorAll(".nav-btn[data-target]");
+    const backBtn = document.getElementById("back-btn");
+    const chatNameEl = document.getElementById("chat-name");
+    const messagesEl = document.getElementById("messages");
+    const messageForm = document.getElementById("message-form");
+    const messageInput = document.getElementById("message-input");
+
+    // Render device cards
+    function renderDevices() {
+      deviceListEl.innerHTML = "";
+      devices.forEach((device, index) => {
+        const li = document.createElement("li");
+        li.className = "device-card";
+        li.dataset.index = index.toString();
+
+        li.innerHTML = `
+          <div class="device-avatar">${device.name.charAt(0)}</div>
+          <div class="device-info">
+            <div class="device-name">${device.name}</div>
+            <div class="device-meta">${device.distance} · Tap to chat</div>
+            <div class="device-tags">
+              <span class="tag-pill">BL</span>
+              <span class="tag-pill">Local only</span>
+            </div>
+          </div>
+        `;
+
+        li.addEventListener("click", () => openChat(device));
+        deviceListEl.appendChild(li);
+      });
+
+      deviceCountEl.textContent = `${devices.length} found`;
+    }
+
+    function setActiveScreen(name) {
+      screens.forEach((screen) => {
+        const isTarget = screen.dataset.screen === name;
+        screen.classList.toggle("hidden", !isTarget);
+      });
+
+      navButtons.forEach((btn) => {
+        const isTarget = btn.dataset.target === name;
+        btn.classList.toggle("active", isTarget);
+      });
+    }
+
+    function openChat(device) {
+      chatNameEl.textContent = device.name;
+      messagesEl.innerHTML = "";
+
+      addMessage(
+        "incoming",
+        `Hi, this is ${device.name}. You're connected via Bluetooth.`,
+      );
+      addMessage("incoming", "Messages stay on nearby devices only.");
+
+      setActiveScreen("chat");
+      messageInput.focus();
+    }
+
+    function addMessage(direction, text) {
+      const row = document.createElement("div");
+      row.className = `message-row ${direction}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // Events
+    scanBtn.addEventListener("click", () => {
+      scanBtn.textContent = "Scanning…";
+      scanBtn.disabled = true;
+
+      setTimeout(() => {
+        scanBtn.textContent = "Scan";
+        scanBtn.disabled = false;
+      }, 1200);
+    });
+
+    navButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.target;
+        if (target) setActiveScreen(target);
+      });
+    });
+
+    backBtn.addEventListener("click", () => setActiveScreen("devices"));
+
+    messageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      addMessage("outgoing", text);
+      messageInput.value = "";
+
+      // simple fake auto-response
+      setTimeout(() => {
+        addMessage("incoming", "Got it. This is a prototype reply.");
+      }, 500);
+    });
+
+    renderDevices();
+  </script>
+</body>
+</html>
